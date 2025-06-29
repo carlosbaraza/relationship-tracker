@@ -1,19 +1,19 @@
 version: "3.8"
 
 services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://elector_user:elector_password@db:5432/elector
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: your-nextauth-secret-change-in-production
-    depends_on:
-      - db
-    volumes:
-      - .:/app
-      - /app/node_modules
+  # app:
+  #   build: .
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DATABASE_URL: postgresql://elector_user:elector_password@db:5432/elector
+  #     NEXTAUTH_URL: http://localhost:3000
+  #     NEXTAUTH_SECRET: your-nextauth-secret-change-in-production
+  #   depends_on:
+  #     - db
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
 
   db:
     image: postgres:16
