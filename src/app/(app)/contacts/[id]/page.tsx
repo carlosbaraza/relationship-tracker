@@ -1,0 +1,342 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Edit, Trash2, Plus, Calendar, List } from "lucide-react";
+import { format } from "date-fns";
+import { InteractionCalendar } from "@/components/InteractionCalendar";
+import {
+  getLocalData,
+  getContactInteractions,
+  addInteraction,
+  deleteInteraction,
+  updateInteraction,
+} from "@/lib/storage";
+import type { Contact, Interaction } from "@/lib/types";
+
+export default function ContactDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const contactId = params.id as string;
+
+  const [contact, setContact] = useState<Contact | null>(null);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
+  const [showAddInteraction, setShowAddInteraction] = useState(false);
+  const [newInteractionDate, setNewInteractionDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [newInteractionNote, setNewInteractionNote] = useState("");
+  const [editingInteraction, setEditingInteraction] = useState<string | null>(null);
+  const [editingDate, setEditingDate] = useState("");
+  const [editingNote, setEditingNote] = useState("");
+
+  const loadContactData = () => {
+    const data = getLocalData();
+    const foundContact = data.contacts.find((c) => c.id === contactId);
+
+    if (!foundContact) {
+      router.push("/");
+      return;
+    }
+
+    setContact(foundContact);
+    setInteractions(getContactInteractions(contactId));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadContactData();
+  }, [contactId, router]);
+
+  const handleAddInteraction = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const date = new Date(newInteractionDate);
+    const note = newInteractionNote.trim() || undefined;
+
+    addInteraction(contactId, date, note);
+
+    // Reset form
+    setNewInteractionDate(format(new Date(), "yyyy-MM-dd"));
+    setNewInteractionNote("");
+    setShowAddInteraction(false);
+
+    // Reload data
+    loadContactData();
+  };
+
+  const handleDeleteInteraction = (interactionId: string) => {
+    if (confirm("Delete this interaction?")) {
+      deleteInteraction(interactionId);
+      loadContactData();
+    }
+  };
+
+  const handleStartEdit = (interaction: Interaction) => {
+    setEditingInteraction(interaction.id);
+    setEditingDate(format(interaction.date, "yyyy-MM-dd"));
+    setEditingNote(interaction.note || "");
+  };
+
+  const handleSaveEdit = (interactionId: string) => {
+    const updates: Partial<Pick<Interaction, "date" | "note">> = {
+      date: new Date(editingDate),
+      note: editingNote.trim() || undefined,
+    };
+    updateInteraction(interactionId, updates);
+    setEditingInteraction(null);
+    setEditingDate("");
+    setEditingNote("");
+    loadContactData();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingInteraction(null);
+    setEditingDate("");
+    setEditingNote("");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-gray-500 dark:text-gray-400">Loading contact...</div>
+      </div>
+    );
+  }
+
+  if (!contact) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-gray-500 dark:text-gray-400 mb-4">Contact not found</div>
+        <button onClick={() => router.push("/")} className="text-black dark:text-white underline">
+          Go back
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => router.push("/")}
+          className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to contacts</span>
+        </button>
+      </div>
+
+      {/* Contact Info */}
+      <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          {contact.name}
+        </h1>
+        {contact.group && <p className="text-gray-600 dark:text-gray-400">{contact.group}</p>}
+        <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+          {interactions.length} interaction{interactions.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
+      {/* Add Interaction */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+              viewMode === "calendar"
+                ? "bg-black dark:bg-white text-white dark:text-black"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Calendar</span>
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+              viewMode === "list"
+                ? "bg-black dark:bg-white text-white dark:text-black"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            }`}
+          >
+            <List className="w-4 h-4" />
+            <span>List</span>
+          </button>
+        </div>
+
+        <button
+          onClick={() => setShowAddInteraction(!showAddInteraction)}
+          className="flex items-center space-x-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Interaction</span>
+        </button>
+      </div>
+
+      {/* Add Interaction Form */}
+      {showAddInteraction && (
+        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <form onSubmit={handleAddInteraction} className="space-y-4">
+            <div>
+              <label
+                htmlFor="date"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                id="date"
+                value={newInteractionDate}
+                onChange={(e) => setNewInteractionDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="note"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Note (optional)
+              </label>
+              <textarea
+                id="note"
+                value={newInteractionNote}
+                onChange={(e) => setNewInteractionNote(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent"
+                rows={3}
+                placeholder="Optional note about this interaction"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+              >
+                Add Interaction
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddInteraction(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Calendar or List View */}
+      {viewMode === "calendar" ? (
+        <InteractionCalendar
+          interactions={interactions}
+          contactId={contactId}
+          onInteractionAdded={loadContactData}
+        />
+      ) : (
+        <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Interaction History
+            </h3>
+          </div>
+
+          {interactions.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+              No interactions yet
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200 dark:divide-gray-800">
+              {interactions.map((interaction) => (
+                <div key={interaction.id} className="p-4">
+                  {editingInteraction === interaction.id ? (
+                    // Edit mode
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Date
+                        </label>
+                        <input
+                          type="date"
+                          value={editingDate}
+                          onChange={(e) => setEditingDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Note (optional)
+                        </label>
+                        <textarea
+                          value={editingNote}
+                          onChange={(e) => setEditingNote(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent"
+                          rows={3}
+                          placeholder="Optional note about this interaction"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleSaveEdit(interaction.id)}
+                          className="px-3 py-2 bg-black dark:bg-white text-white dark:text-black rounded-md hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors text-sm"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-3 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // View mode
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {format(interaction.date, "MMM d, yyyy")}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {format(interaction.date, "h:mm a")}
+                        </div>
+                        {interaction.note && (
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                            {interaction.note}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleStartEdit(interaction)}
+                          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                          aria-label="Edit interaction"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInteraction(interaction.id)}
+                          className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                          aria-label="Delete interaction"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

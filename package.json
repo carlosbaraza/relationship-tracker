@@ -6,12 +6,22 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.3.4"
+    "next": "15.3.4",
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0",
+    "next-auth": "5.0.0-beta.22",
+    "@auth/prisma-adapter": "^2.7.4",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.462.0",
+    "cuid": "^3.0.0"
   },
   "devDependencies": {
     "typescript": "^5",
