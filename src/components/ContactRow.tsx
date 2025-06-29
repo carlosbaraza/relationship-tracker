@@ -1,22 +1,37 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { ContactWithLastInteraction } from "@/lib/types";
-import { addInteraction } from "@/lib/storage";
+import { addInteraction, deleteContact } from "@/lib/storage";
 
 interface ContactRowProps {
   contact: ContactWithLastInteraction;
   onInteractionAdded: () => void;
+  onContactDeleted?: () => void;
 }
 
-export function ContactRow({ contact, onInteractionAdded }: ContactRowProps) {
+export function ContactRow({ contact, onInteractionAdded, onContactDeleted }: ContactRowProps) {
   const handleQuickInteraction = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     addInteraction(contact.id);
     onInteractionAdded();
+  };
+
+  const handleDeleteContact = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (
+      confirm(
+        `Are you sure you want to delete ${contact.name}? This will also delete all their interactions.`
+      )
+    ) {
+      deleteContact(contact.id);
+      onContactDeleted?.();
+    }
   };
 
   return (
@@ -36,13 +51,23 @@ export function ContactRow({ contact, onInteractionAdded }: ContactRowProps) {
         </div>
       </Link>
 
-      <button
-        onClick={handleQuickInteraction}
-        className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
-        aria-label={`Add interaction for ${contact.name}`}
-      >
-        <Plus className="w-4 h-4" />
-      </button>
+      <div className="flex items-center space-x-1">
+        <button
+          onClick={handleQuickInteraction}
+          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
+          aria-label={`Add interaction for ${contact.name}`}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={handleDeleteContact}
+          className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
+          aria-label={`Delete ${contact.name}`}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

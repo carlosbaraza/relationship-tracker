@@ -11,6 +11,7 @@ import {
   addInteraction,
   deleteInteraction,
   updateInteraction,
+  deleteContact,
 } from "@/lib/storage";
 import type { Contact, Interaction } from "@/lib/types";
 
@@ -47,6 +48,19 @@ export default function ContactDetailPage() {
   useEffect(() => {
     loadContactData();
   }, [contactId, router]);
+
+  const handleDeleteContact = () => {
+    if (!contact) return;
+
+    if (
+      confirm(
+        `Are you sure you want to delete ${contact.name}? This will also delete all their interactions and cannot be undone.`
+      )
+    ) {
+      deleteContact(contactId);
+      router.push("/");
+    }
+  };
 
   const handleAddInteraction = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +139,14 @@ export default function ContactDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to contacts</span>
+        </button>
+
+        <button
+          onClick={handleDeleteContact}
+          className="flex items-center space-x-2 px-3 py-2 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+          <span>Delete Contact</span>
         </button>
       </div>
 

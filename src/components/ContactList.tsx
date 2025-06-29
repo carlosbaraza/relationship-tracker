@@ -24,6 +24,10 @@ export function ContactList() {
     loadContacts();
   };
 
+  const handleContactDeleted = () => {
+    loadContacts();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -121,6 +125,7 @@ export function ContactList() {
                 key={contact.id}
                 contact={contact}
                 onInteractionAdded={handleInteractionAdded}
+                onContactDeleted={handleContactDeleted}
               />
             ))}
           </div>
