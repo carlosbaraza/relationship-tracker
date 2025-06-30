@@ -45,8 +45,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy startup script from builder stage
-COPY --from=builder --chown=nextjs:nodejs /app/start.sh ./start.sh
+# Copy startup script and make it executable
+COPY --chown=nextjs:nodejs start.sh ./start.sh
 RUN chmod +x ./start.sh
 
 USER nextjs
