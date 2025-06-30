@@ -57,4 +57,4 @@ ENV PORT 3000
 # set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["/bin/bash", "./start.sh"]
+CMD ["/bin/sh", "./start.sh"]
