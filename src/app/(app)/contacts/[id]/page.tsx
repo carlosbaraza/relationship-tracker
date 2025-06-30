@@ -5,20 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Edit, Trash2, Plus, Calendar, List } from "lucide-react";
 import { format } from "date-fns";
 import { InteractionCalendar } from "@/components/InteractionCalendar";
-import {
-  getLocalData,
-  getContactInteractions,
-  addInteraction,
-  deleteInteraction,
-  updateInteraction,
-  deleteContact,
-} from "@/lib/storage";
+import { useAuth } from "@/components/AuthProvider";
 import type { Contact, Interaction } from "@/lib/types";
 
 export default function ContactDetailPage() {
   const params = useParams();
   const router = useRouter();
   const contactId = params.id as string;
+  const { storageManager, isLoading: authLoading } = useAuth();
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -31,25 +25,33 @@ export default function ContactDetailPage() {
   const [editingDate, setEditingDate] = useState("");
   const [editingNote, setEditingNote] = useState("");
 
-  const loadContactData = () => {
-    const data = getLocalData();
-    const foundContact = data.contacts.find((c) => c.id === contactId);
+  const loadContactData = async () => {
+    try {
+      const foundContact = await storageManager.getContact(contactId);
 
-    if (!foundContact) {
+      if (!foundContact) {
+        router.push("/");
+        return;
+      }
+
+      setContact(foundContact);
+      const contactInteractions = await storageManager.getContactInteractions(contactId);
+      setInteractions(contactInteractions);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error loading contact data:", error);
       router.push("/");
-      return;
     }
-
-    setContact(foundContact);
-    setInteractions(getContactInteractions(contactId));
-    setLoading(false);
   };
 
   useEffect(() => {
-    loadContactData();
-  }, [contactId, router]);
+    // Only load contact data after auth has finished loading
+    if (!authLoading) {
+      loadContactData();
+    }
+  }, [contactId, router, storageManager, authLoading]);
 
-  const handleDeleteContact = () => {
+  const handleDeleteContact = async () => {
     if (!contact) return;
 
     if (
@@ -57,18 +59,18 @@ export default function ContactDetailPage() {
         `Are you sure you want to delete ${contact.name}? This will also delete all their interactions and cannot be undone.`
       )
     ) {
-      deleteContact(contactId);
+      await storageManager.deleteContact(contactId);
       router.push("/");
     }
   };
 
-  const handleAddInteraction = (e: React.FormEvent) => {
+  const handleAddInteraction = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const date = new Date(newInteractionDate);
     const note = newInteractionNote.trim() || undefined;
 
-    addInteraction(contactId, date, note);
+    await storageManager.addInteraction(contactId, date, note);
 
     // Reset form
     setNewInteractionDate(format(new Date(), "yyyy-MM-dd"));
@@ -79,9 +81,9 @@ export default function ContactDetailPage() {
     loadContactData();
   };
 
-  const handleDeleteInteraction = (interactionId: string) => {
+  const handleDeleteInteraction = async (interactionId: string) => {
     if (confirm("Delete this interaction?")) {
-      deleteInteraction(interactionId);
+      await storageManager.deleteInteraction(interactionId);
       loadContactData();
     }
   };
@@ -92,12 +94,12 @@ export default function ContactDetailPage() {
     setEditingNote(interaction.note || "");
   };
 
-  const handleSaveEdit = (interactionId: string) => {
+  const handleSaveEdit = async (interactionId: string) => {
     const updates: Partial<Pick<Interaction, "date" | "note">> = {
       date: new Date(editingDate),
       note: editingNote.trim() || undefined,
     };
-    updateInteraction(interactionId, updates);
+    await storageManager.updateInteraction(interactionId, updates);
     setEditingInteraction(null);
     setEditingDate("");
     setEditingNote("");
@@ -110,7 +112,7 @@ export default function ContactDetailPage() {
     setEditingNote("");
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-gray-500 dark:text-gray-400">Loading contact...</div>

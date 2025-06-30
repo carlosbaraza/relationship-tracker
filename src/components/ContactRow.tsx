@@ -3,7 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { ContactWithLastInteraction } from "@/lib/types";
-import { addInteraction, deleteContact } from "@/lib/storage";
+import { useAuth } from "./AuthProvider";
 
 interface ContactRowProps {
   contact: ContactWithLastInteraction;
@@ -12,15 +12,17 @@ interface ContactRowProps {
 }
 
 export function ContactRow({ contact, onInteractionAdded, onContactDeleted }: ContactRowProps) {
-  const handleQuickInteraction = (e: React.MouseEvent) => {
+  const { storageManager } = useAuth();
+
+  const handleQuickInteraction = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    addInteraction(contact.id);
+    await storageManager.addInteraction(contact.id);
     onInteractionAdded();
   };
 
-  const handleDeleteContact = (e: React.MouseEvent) => {
+  const handleDeleteContact = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -29,7 +31,7 @@ export function ContactRow({ contact, onInteractionAdded, onContactDeleted }: Co
         `Are you sure you want to delete ${contact.name}? This will also delete all their interactions.`
       )
     ) {
-      deleteContact(contact.id);
+      await storageManager.deleteContact(contact.id);
       onContactDeleted?.();
     }
   };

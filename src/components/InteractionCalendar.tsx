@@ -15,7 +15,7 @@ import {
 } from "date-fns";
 import { X, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Interaction } from "@/lib/types";
-import { addInteraction } from "@/lib/storage";
+import { useAuth } from "./AuthProvider";
 
 interface InteractionCalendarProps {
   interactions: Interaction[];
@@ -30,6 +30,7 @@ export function InteractionCalendar({
   contactId,
   onInteractionAdded,
 }: InteractionCalendarProps) {
+  const { storageManager } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [newInteractionNote, setNewInteractionNote] = useState("");
@@ -54,11 +55,11 @@ export function InteractionCalendar({
     setShowModal(true);
   };
 
-  const handleAddInteraction = () => {
+  const handleAddInteraction = async () => {
     if (!selectedDate) return;
 
     const note = newInteractionNote.trim() || undefined;
-    addInteraction(contactId, selectedDate, note);
+    await storageManager.addInteraction(contactId, selectedDate, note);
 
     // Reset and close modal
     setNewInteractionNote("");

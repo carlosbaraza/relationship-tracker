@@ -3,22 +3,26 @@
 import { useState, useEffect } from "react";
 import { ContactRow } from "./ContactRow";
 import type { ContactWithLastInteraction } from "@/lib/types";
-import { getContactsWithLastInteraction } from "@/lib/storage";
+import { useAuth } from "./AuthProvider";
 
 export function ContactList() {
+  const { storageManager, isAuthenticated, isLoading: authLoading } = useAuth();
   const [contacts, setContacts] = useState<ContactWithLastInteraction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
 
-  const loadContacts = () => {
-    const data = getContactsWithLastInteraction();
+  const loadContacts = async () => {
+    const data = await storageManager.getContactsWithLastInteraction();
     setContacts(data);
     setLoading(false);
   };
 
   useEffect(() => {
-    loadContacts();
-  }, []);
+    // Only load contacts after auth has finished loading
+    if (!authLoading) {
+      loadContacts();
+    }
+  }, [isAuthenticated, authLoading]);
 
   const handleInteractionAdded = () => {
     loadContacts();
@@ -28,7 +32,7 @@ export function ContactList() {
     loadContacts();
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-gray-500 dark:text-gray-400">Loading contacts...</div>

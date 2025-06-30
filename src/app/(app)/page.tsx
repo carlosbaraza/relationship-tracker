@@ -1,35 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { ContactList } from "@/components/ContactList";
-import { addContact, getLocalData } from "@/lib/storage";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function HomePage() {
+  const { storageManager, isLoading: authLoading } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState("");
   const [group, setGroup] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [availableGroups, setAvailableGroups] = useState<string[]>([]);
 
   // Get available groups for quick select
-  const getAvailableGroups = () => {
-    const data = getLocalData();
+  const getAvailableGroups = async () => {
+    const contacts = await storageManager.getContactsWithLastInteraction();
     const existingGroups = Array.from(
-      new Set(data.contacts.map((c) => c.group).filter((g): g is string => Boolean(g)))
+      new Set(contacts.map((c) => c.group).filter((g): g is string => Boolean(g)))
     );
     const defaultGroups = ["Friends", "Family", "Work"];
     const userGroups = existingGroups.filter((g) => !defaultGroups.includes(g));
     return [...userGroups, ...defaultGroups];
   };
 
-  const availableGroups = getAvailableGroups();
+  // Load available groups on component mount
+  React.useEffect(() => {
+    // Only load available groups after auth has finished loading
+    if (!authLoading) {
+      getAvailableGroups().then(setAvailableGroups);
+    }
+  }, [storageManager, authLoading]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) return;
 
-    addContact(name.trim(), group.trim() || undefined);
+    await storageManager.addContact(name.trim(), group.trim() || undefined);
 
     // Reset form
     setName("");
@@ -38,6 +46,11 @@ export default function HomePage() {
 
     // Trigger refresh of contact list
     setRefreshKey((prev) => prev + 1);
+
+    // Refresh available groups
+    if (!authLoading) {
+      getAvailableGroups().then(setAvailableGroups);
+    }
   };
 
   const handleCancel = () => {
