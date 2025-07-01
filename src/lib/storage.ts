@@ -1,8 +1,26 @@
 "use client";
 
 import cuid from "cuid";
-import type { Contact, Interaction, LocalData, ContactWithLastInteraction } from "./types";
+import type {
+  Contact,
+  Interaction,
+  LocalData,
+  ContactWithLastInteraction,
+  Reminder,
+  CreateReminderData,
+  ReminderType,
+  RecurringUnit,
+} from "./types";
 import { formatTimeSince } from "./time";
+import {
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  isAfter,
+  isBefore,
+  differenceInDays,
+} from "date-fns";
 
 const STORAGE_KEY = "elector-data";
 
@@ -10,6 +28,7 @@ const STORAGE_KEY = "elector-data";
 const emptyData: LocalData = {
   contacts: [],
   interactions: [],
+  reminders: [],
 };
 
 export function getLocalData(): LocalData {
@@ -22,14 +41,25 @@ export function getLocalData(): LocalData {
     const data = JSON.parse(stored);
     // Convert date strings back to Date objects
     return {
-      contacts: data.contacts.map((c: any) => ({
-        ...c,
-        createdAt: new Date(c.createdAt),
-      })),
-      interactions: data.interactions.map((i: any) => ({
-        ...i,
-        date: new Date(i.date),
-      })),
+      contacts:
+        data.contacts?.map((c: any) => ({
+          ...c,
+          createdAt: new Date(c.createdAt),
+        })) || [],
+      interactions:
+        data.interactions?.map((i: any) => ({
+          ...i,
+          date: new Date(i.date),
+        })) || [],
+      reminders:
+        data.reminders?.map((r: any) => ({
+          ...r,
+          dueDate: new Date(r.dueDate),
+          acknowledgedAt: r.acknowledgedAt ? new Date(r.acknowledgedAt) : null,
+          nextDueDate: r.nextDueDate ? new Date(r.nextDueDate) : null,
+          createdAt: new Date(r.createdAt),
+          updatedAt: new Date(r.updatedAt),
+        })) || [],
     };
   } catch (error) {
     console.error("Error reading local data:", error);
@@ -87,9 +117,10 @@ export function deleteContact(id: string): boolean {
 
   if (contactIndex === -1) return false;
 
-  // Remove contact and all its interactions
+  // Remove contact and all its interactions and reminders
   data.contacts.splice(contactIndex, 1);
   data.interactions = data.interactions.filter((i) => i.contactId !== id);
+  data.reminders = data.reminders.filter((r) => r.contactId !== id);
 
   saveLocalData(data);
   return true;
@@ -143,13 +174,177 @@ export function deleteInteraction(id: string): boolean {
   return true;
 }
 
+// Reminder functions
+export function addReminder(reminderData: CreateReminderData): Reminder | null {
+  const data = getLocalData();
+  const contact = data.contacts.find((c) => c.id === reminderData.contactId);
+
+  if (!contact) return null;
+
+  const now = new Date();
+  const reminder: Reminder = {
+    id: cuid(),
+    contactId: reminderData.contactId,
+    title: reminderData.title.trim(),
+    description: reminderData.description?.trim() || null,
+    dueDate: reminderData.dueDate,
+    reminderType: reminderData.reminderType,
+    recurringUnit: reminderData.recurringUnit || null,
+    recurringValue: reminderData.recurringValue || null,
+    isAcknowledged: false,
+    acknowledgedAt: null,
+    nextDueDate:
+      reminderData.reminderType === "RECURRING"
+        ? calculateNextDueDate(
+            reminderData.dueDate,
+            reminderData.recurringUnit!,
+            reminderData.recurringValue!
+          )
+        : null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  data.reminders.push(reminder);
+  saveLocalData(data);
+  return reminder;
+}
+
+export function updateReminder(
+  id: string,
+  updates: Partial<Omit<Reminder, "id" | "contactId" | "createdAt">>
+): Reminder | null {
+  const data = getLocalData();
+  const reminderIndex = data.reminders.findIndex((r) => r.id === id);
+
+  if (reminderIndex === -1) return null;
+
+  const currentReminder = data.reminders[reminderIndex];
+  const updatedReminder = {
+    ...currentReminder,
+    ...updates,
+    title: updates.title?.trim() || currentReminder.title,
+    description: updates.description?.trim() || currentReminder.description,
+    updatedAt: new Date(),
+  };
+
+  // Recalculate nextDueDate if recurring settings changed
+  if (
+    updatedReminder.reminderType === "RECURRING" &&
+    (updates.dueDate || updates.recurringUnit || updates.recurringValue)
+  ) {
+    updatedReminder.nextDueDate = calculateNextDueDate(
+      updatedReminder.dueDate,
+      updatedReminder.recurringUnit!,
+      updatedReminder.recurringValue!
+    );
+  }
+
+  data.reminders[reminderIndex] = updatedReminder;
+  saveLocalData(data);
+  return updatedReminder;
+}
+
+export function deleteReminder(id: string): boolean {
+  const data = getLocalData();
+  const reminderIndex = data.reminders.findIndex((r) => r.id === id);
+
+  if (reminderIndex === -1) return false;
+
+  data.reminders.splice(reminderIndex, 1);
+  saveLocalData(data);
+  return true;
+}
+
+export function acknowledgeReminder(id: string): Reminder | null {
+  const data = getLocalData();
+  const reminderIndex = data.reminders.findIndex((r) => r.id === id);
+
+  if (reminderIndex === -1) return null;
+
+  const reminder = data.reminders[reminderIndex];
+  const now = new Date();
+
+  reminder.isAcknowledged = true;
+  reminder.acknowledgedAt = now;
+  reminder.updatedAt = now;
+
+  // For recurring reminders, schedule the next occurrence
+  if (reminder.reminderType === "RECURRING" && reminder.nextDueDate) {
+    reminder.dueDate = reminder.nextDueDate;
+    reminder.nextDueDate = calculateNextDueDate(
+      reminder.dueDate,
+      reminder.recurringUnit!,
+      reminder.recurringValue!
+    );
+    reminder.isAcknowledged = false;
+    reminder.acknowledgedAt = null;
+  }
+
+  saveLocalData(data);
+  return reminder;
+}
+
+export function getContactReminders(contactId: string): Reminder[] {
+  const data = getLocalData();
+  return data.reminders
+    .filter((r) => r.contactId === contactId)
+    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+}
+
+export function getAllReminders(): Reminder[] {
+  const data = getLocalData();
+  return data.reminders.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+}
+
+export function getDueReminders(): Reminder[] {
+  const data = getLocalData();
+  const now = new Date();
+
+  return data.reminders
+    .filter((r) => !r.isAcknowledged && isBefore(r.dueDate, now))
+    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+}
+
+export function getUpcomingReminders(withinDays: number = 30): Reminder[] {
+  const data = getLocalData();
+  const now = new Date();
+  const cutoffDate = addDays(now, withinDays);
+
+  return data.reminders
+    .filter((r) => !r.isAcknowledged && isAfter(r.dueDate, now) && isBefore(r.dueDate, cutoffDate))
+    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+}
+
+function calculateNextDueDate(currentDate: Date, unit: RecurringUnit, value: number): Date {
+  switch (unit) {
+    case "DAYS":
+      return addDays(currentDate, value);
+    case "WEEKS":
+      return addWeeks(currentDate, value);
+    case "MONTHS":
+      return addMonths(currentDate, value);
+    case "YEARS":
+      return addYears(currentDate, value);
+    default:
+      return currentDate;
+  }
+}
+
 export function getContactsWithLastInteraction(): ContactWithLastInteraction[] {
   const data = getLocalData();
+  const now = new Date();
 
   const contactsWithInteractions = data.contacts.map((contact) => {
     const interactions = data.interactions
       .filter((i) => i.contactId === contact.id)
       .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const reminders = data.reminders.filter((r) => r.contactId === contact.id);
+    const dueReminders = reminders.filter((r) => !r.isAcknowledged && isBefore(r.dueDate, now));
+    const upcomingReminders = reminders.filter(
+      (r) => !r.isAcknowledged && isAfter(r.dueDate, now) && differenceInDays(r.dueDate, now) <= 30
+    );
 
     const lastInteraction = interactions[0]?.date;
 
@@ -157,6 +352,8 @@ export function getContactsWithLastInteraction(): ContactWithLastInteraction[] {
       ...contact,
       lastInteraction,
       timeSinceLastInteraction: lastInteraction ? formatTimeSince(lastInteraction) : undefined,
+      dueReminders,
+      upcomingReminders,
     };
   });
 

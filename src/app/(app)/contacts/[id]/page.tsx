@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Edit, Trash2, Plus, Calendar, List } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Plus, Calendar, List, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { InteractionCalendar } from "@/components/InteractionCalendar";
+import { ReminderForm } from "@/components/ReminderForm";
+import { ReminderList } from "@/components/ReminderList";
 import { useAuth } from "@/components/AuthProvider";
-import type { Contact, Interaction } from "@/lib/types";
+import type { Contact, Interaction, Reminder, CreateReminderData } from "@/lib/types";
 
 export default function ContactDetailPage() {
   const params = useParams();
@@ -16,14 +18,17 @@ export default function ContactDetailPage() {
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar");
+  const [viewMode, setViewMode] = useState<"calendar" | "list" | "reminders">("calendar");
   const [showAddInteraction, setShowAddInteraction] = useState(false);
+  const [showAddReminder, setShowAddReminder] = useState(false);
   const [newInteractionDate, setNewInteractionDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [newInteractionNote, setNewInteractionNote] = useState("");
   const [editingInteraction, setEditingInteraction] = useState<string | null>(null);
   const [editingDate, setEditingDate] = useState("");
   const [editingNote, setEditingNote] = useState("");
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
 
   const loadContactData = async () => {
     try {
@@ -35,8 +40,12 @@ export default function ContactDetailPage() {
       }
 
       setContact(foundContact);
-      const contactInteractions = await storageManager.getContactInteractions(contactId);
+      const [contactInteractions, contactReminders] = await Promise.all([
+        storageManager.getContactInteractions(contactId),
+        storageManager.getContactReminders(contactId),
+      ]);
       setInteractions(contactInteractions);
+      setReminders(contactReminders);
       setLoading(false);
     } catch (error) {
       console.error("Error loading contact data:", error);
@@ -56,7 +65,7 @@ export default function ContactDetailPage() {
 
     if (
       confirm(
-        `Are you sure you want to delete ${contact.name}? This will also delete all their interactions and cannot be undone.`
+        `Are you sure you want to delete ${contact.name}? This will also delete all their interactions and reminders and cannot be undone.`
       )
     ) {
       await storageManager.deleteContact(contactId);
@@ -112,6 +121,45 @@ export default function ContactDetailPage() {
     setEditingNote("");
   };
 
+  const handleAddReminder = async (reminderData: CreateReminderData) => {
+    await storageManager.addReminder(reminderData);
+    setShowAddReminder(false);
+    loadContactData();
+  };
+
+  const handleAcknowledgeReminder = async (reminderId: string) => {
+    await storageManager.acknowledgeReminder(reminderId);
+    loadContactData();
+  };
+
+  const handleEditReminder = (reminder: Reminder) => {
+    setEditingReminder(reminder);
+    setShowAddReminder(true);
+  };
+
+  const handleDeleteReminder = async (reminderId: string) => {
+    if (confirm("Delete this reminder?")) {
+      await storageManager.deleteReminder(reminderId);
+      loadContactData();
+    }
+  };
+
+  const handleUpdateReminder = async (reminderData: CreateReminderData) => {
+    if (editingReminder) {
+      await storageManager.updateReminder(editingReminder.id, {
+        title: reminderData.title,
+        description: reminderData.description,
+        dueDate: reminderData.dueDate,
+        reminderType: reminderData.reminderType,
+        recurringUnit: reminderData.recurringUnit,
+        recurringValue: reminderData.recurringValue,
+      });
+      setEditingReminder(null);
+      setShowAddReminder(false);
+      loadContactData();
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -130,6 +178,13 @@ export default function ContactDetailPage() {
       </div>
     );
   }
+
+  const dueReminders = reminders.filter(
+    (r) => !r.isAcknowledged && new Date(r.dueDate) < new Date()
+  );
+  const upcomingReminders = reminders.filter(
+    (r) => !r.isAcknowledged && new Date(r.dueDate) >= new Date()
+  );
 
   return (
     <div className="space-y-6">
@@ -158,12 +213,22 @@ export default function ContactDetailPage() {
           {contact.name}
         </h1>
         {contact.group && <p className="text-gray-600 dark:text-gray-400">{contact.group}</p>}
-        <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-          {interactions.length} interaction{interactions.length !== 1 ? "s" : ""}
-        </p>
+        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500 dark:text-gray-500">
+          <span>
+            {interactions.length} interaction{interactions.length !== 1 ? "s" : ""}
+          </span>
+          <span>
+            {reminders.length} reminder{reminders.length !== 1 ? "s" : ""}
+          </span>
+          {dueReminders.length > 0 && (
+            <span className="text-red-600 dark:text-red-400 font-medium">
+              {dueReminders.length} due now
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Add Interaction */}
+      {/* View Mode and Add Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <button
@@ -186,21 +251,63 @@ export default function ContactDetailPage() {
             }`}
           >
             <List className="w-4 h-4" />
-            <span>List</span>
+            <span>Interactions</span>
+          </button>
+          <button
+            onClick={() => setViewMode("reminders")}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+              viewMode === "reminders"
+                ? "bg-black dark:bg-white text-white dark:text-black"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            <span>Reminders</span>
+            {reminders.filter((r) => !r.isAcknowledged).length > 0 && (
+              <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded-full text-xs font-medium">
+                {reminders.filter((r) => !r.isAcknowledged).length}
+              </span>
+            )}
           </button>
         </div>
 
-        <button
-          onClick={() => setShowAddInteraction(!showAddInteraction)}
-          className="flex items-center space-x-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Interaction</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          {viewMode === "reminders" ? (
+            <button
+              onClick={() => setShowAddReminder(!showAddReminder)}
+              className="flex items-center space-x-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Reminder</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowAddInteraction(!showAddInteraction)}
+              className="flex items-center space-x-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Interaction</span>
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Add Reminder Form */}
+      {showAddReminder && (
+        <ReminderForm
+          contactId={contactId}
+          contactName={contact.name}
+          onSubmit={editingReminder ? handleUpdateReminder : handleAddReminder}
+          onCancel={() => {
+            setShowAddReminder(false);
+            setEditingReminder(null);
+          }}
+          existingReminder={editingReminder || undefined}
+        />
+      )}
+
       {/* Add Interaction Form */}
-      {showAddInteraction && (
+      {showAddInteraction && viewMode !== "reminders" && (
         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <form onSubmit={handleAddInteraction} className="space-y-4">
             <div>
@@ -256,8 +363,26 @@ export default function ContactDetailPage() {
         </div>
       )}
 
-      {/* Calendar or List View */}
-      {viewMode === "calendar" ? (
+      {/* Content based on view mode */}
+      {viewMode === "reminders" ? (
+        <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Reminders for {contact.name}
+            </h3>
+          </div>
+          <div className="p-4">
+            <ReminderList
+              reminders={reminders}
+              onAcknowledge={handleAcknowledgeReminder}
+              onEdit={handleEditReminder}
+              onDelete={handleDeleteReminder}
+              contactName={contact.name}
+              showPastReminders={true}
+            />
+          </div>
+        </div>
+      ) : viewMode === "calendar" ? (
         <InteractionCalendar
           interactions={interactions}
           contactId={contactId}

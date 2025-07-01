@@ -3,7 +3,14 @@
 import { auth } from "./auth";
 import { getLocalData, saveLocalData, clearLocalData } from "./storage";
 import * as dbActions from "@/app/(app)/actions";
-import type { Contact, Interaction, LocalData, ContactWithLastInteraction } from "./types";
+import type {
+  Contact,
+  Interaction,
+  LocalData,
+  ContactWithLastInteraction,
+  Reminder,
+  CreateReminderData,
+} from "./types";
 
 // This is the main storage interface that components should use
 // It automatically switches between localStorage and database based on auth status
@@ -122,13 +129,110 @@ export class StorageManager {
     }
   }
 
+  // Reminder methods
+  async addReminder(reminderData: CreateReminderData): Promise<Reminder | null> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.addReminder(reminderData);
+    } else {
+      // Use localStorage
+      const { addReminder } = await import("./storage");
+      return addReminder(reminderData);
+    }
+  }
+
+  async updateReminder(
+    reminderId: string,
+    updates: Partial<Omit<Reminder, "id" | "contactId" | "createdAt">>
+  ): Promise<Reminder | null> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.updateReminder(reminderId, updates);
+    } else {
+      // Use localStorage
+      const { updateReminder } = await import("./storage");
+      return updateReminder(reminderId, updates);
+    }
+  }
+
+  async deleteReminder(reminderId: string): Promise<boolean> {
+    if (this.isAuthenticated) {
+      // Use database
+      await dbActions.deleteReminder(reminderId);
+      return true;
+    } else {
+      // Use localStorage
+      const { deleteReminder } = await import("./storage");
+      return deleteReminder(reminderId);
+    }
+  }
+
+  async acknowledgeReminder(reminderId: string): Promise<Reminder | null> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.acknowledgeReminder(reminderId);
+    } else {
+      // Use localStorage
+      const { acknowledgeReminder } = await import("./storage");
+      return acknowledgeReminder(reminderId);
+    }
+  }
+
+  async getContactReminders(contactId: string): Promise<Reminder[]> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.getContactReminders(contactId);
+    } else {
+      // Use localStorage
+      const { getContactReminders } = await import("./storage");
+      return getContactReminders(contactId);
+    }
+  }
+
+  async getAllReminders(): Promise<Reminder[]> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.getAllReminders();
+    } else {
+      // Use localStorage
+      const { getAllReminders } = await import("./storage");
+      return getAllReminders();
+    }
+  }
+
+  async getDueReminders(): Promise<Reminder[]> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.getDueReminders();
+    } else {
+      // Use localStorage
+      const { getDueReminders } = await import("./storage");
+      return getDueReminders();
+    }
+  }
+
+  async getUpcomingReminders(withinDays?: number): Promise<Reminder[]> {
+    if (this.isAuthenticated) {
+      // Use database
+      return await dbActions.getUpcomingReminders(withinDays);
+    } else {
+      // Use localStorage
+      const { getUpcomingReminders } = await import("./storage");
+      return getUpcomingReminders(withinDays);
+    }
+  }
+
   async migrateToCloud(): Promise<void> {
     if (!this.isAuthenticated) {
       throw new Error("Must be authenticated to migrate data");
     }
 
     const localData = getLocalData();
-    if (localData.contacts.length > 0 || localData.interactions.length > 0) {
+    if (
+      localData.contacts.length > 0 ||
+      localData.interactions.length > 0 ||
+      localData.reminders.length > 0
+    ) {
       await dbActions.migrateLocalData(localData);
       clearLocalData();
     }
@@ -144,6 +248,6 @@ export class StorageManager {
 
   hasLocalData(): boolean {
     const data = getLocalData();
-    return data.contacts.length > 0 || data.interactions.length > 0;
+    return data.contacts.length > 0 || data.interactions.length > 0 || data.reminders.length > 0;
   }
 }

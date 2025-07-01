@@ -33,6 +33,7 @@ model Contact {
     userId       String
     user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
     interactions Interaction[]
+    reminders    Reminder[]
     createdAt    DateTime      @default(now())
 }
 
@@ -42,6 +43,44 @@ model Interaction {
     contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
     date      DateTime @default(now())
     note      String?
+}
+
+model Reminder {
+    id          String  @id @default(cuid())
+    contactId   String
+    contact     Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+    title       String
+    description String?
+
+    // Reminder scheduling
+    dueDate      DateTime
+    reminderType ReminderType @default(ONE_TIME)
+
+    // Recurring settings
+    recurringUnit  RecurringUnit?
+    recurringValue Int? // e.g., every 2 weeks, every 1 year
+
+    // Status and acknowledgment
+    isAcknowledged Boolean   @default(false)
+    acknowledgedAt DateTime?
+
+    // Next occurrence for recurring reminders
+    nextDueDate DateTime?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum ReminderType {
+    ONE_TIME
+    RECURRING
+}
+
+enum RecurringUnit {
+    DAYS
+    WEEKS
+    MONTHS
+    YEARS
 }
 
 model Account {
