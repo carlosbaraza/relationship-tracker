@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <header className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 py-4 pwa:pt-12 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto pb-4 pl-safe pr-safe pt-safe flex items-center justify-between">
           <Link href="/" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Elector
           </Link>
@@ -63,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Data Migration Banner */}
       {isAuthenticated && hasLocalData && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
-          <div className="max-w-5xl mx-auto px-4 py-3">
+          <div className="max-w-5xl mx-auto py-3 px-safe">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -95,7 +95,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main className="max-w-5xl mx-auto px-4 py-6">{children}</main>
+      <main className="max-w-5xl mx-auto py-6 px-safe">{children}</main>
 
       {/* Migration Confirmation Modal */}
       {showMigrationModal && (

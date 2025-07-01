@@ -35,6 +35,23 @@ body {
   line-height: 1.6;
 }
 
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+.pr-safe {
+  padding-right: max(env(safe-area-inset-right), 1rem);
+}
+.pl-safe {
+  padding-left: max(env(safe-area-inset-left), 1rem);
+}
+.px-safe {
+  padding-left: max(env(safe-area-inset-left), 1rem);
+  padding-right: max(env(safe-area-inset-right), 1rem);
+}
+
 /* Grid system based on 8px */
 .spacing-1 {
   margin: calc(var(--spacing-unit) * 1);
