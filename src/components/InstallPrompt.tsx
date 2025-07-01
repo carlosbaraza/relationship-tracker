@@ -56,26 +56,26 @@ export default function InstallPrompt() {
       setIsVisible(true);
     }
 
-    // Check for install capability and update state
-    const checkInstallCapability = () => {
-      const installable = checkInstallable();
-      setCanInstall(installable);
+    // Check for install capability once initially
+    const initialInstallable = checkInstallable();
+    setCanInstall(initialInstallable);
 
-      // Hide banner if install capability is not available after a short wait
-      if (!installable) {
-        setTimeout(() => {
-          if (!checkInstallable()) {
-            setIsVisible(false);
-          } else {
-            setCanInstall(true);
-          }
-        }, 1000);
-      }
+    // Listen for beforeinstallprompt event to detect when install becomes available
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      // Store the event so it can be triggered later
+      (window as any).deferredPrompt = e;
+      (window as any).triggerPWAInstall = async () => {
+        const deferredPrompt = (window as any).deferredPrompt;
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const result = await deferredPrompt.userChoice;
+          (window as any).deferredPrompt = null;
+          return result;
+        }
+      };
+      setCanInstall(true);
     };
-
-    // Check immediately and then periodically
-    checkInstallCapability();
-    const checkInterval = setInterval(checkInstallCapability, 500);
 
     // Listen for app installation
     const handleAppInstalled = () => {
@@ -83,13 +83,38 @@ export default function InstallPrompt() {
       setIsVisible(false);
       localStorage.setItem("pwa-installed", "true");
       localStorage.setItem("pwa-install-dismissed", "true");
+      (window as any).deferredPrompt = null;
+      (window as any).triggerPWAInstall = null;
     };
 
+    // Add event listeners
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
+    // One-time delayed check for iOS Safari support
+    const delayedCheck = setTimeout(() => {
+      // For iOS Safari, we can't detect beforeinstallprompt, so check for iOS and show install instructions
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isInStandaloneMode = (window.navigator as any).standalone;
+
+      if (
+        isIOS &&
+        !isInStandaloneMode &&
+        !installed &&
+        !localStorage.getItem("pwa-install-dismissed")
+      ) {
+        setCanInstall(true);
+        (window as any).triggerPWAInstall = async () => {
+          // For iOS, we just show instructions
+          return { outcome: "accepted" };
+        };
+      }
+    }, 1000);
+
     return () => {
-      clearInterval(checkInterval);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
+      clearTimeout(delayedCheck);
     };
   }, []);
 
@@ -124,7 +149,7 @@ export default function InstallPrompt() {
 
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center space-x-3">
           <Smartphone className="w-4 h-4 text-blue-600 flex-shrink-0" />
           <p className="text-blue-800">
