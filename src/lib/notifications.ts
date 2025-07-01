@@ -54,8 +54,8 @@ class NotificationService {
 
     const notification = new Notification(title, {
       body,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/icon-256.png",
+      badge: "/icon-256.png",
       tag: `reminder-${reminder.id}`,
       requireInteraction: true,
     });
@@ -84,8 +84,8 @@ class NotificationService {
 
     const notification = new Notification(title, {
       body,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/icon-256.png",
+      badge: "/icon-256.png",
       tag: "multiple-reminders",
       requireInteraction: true,
     });

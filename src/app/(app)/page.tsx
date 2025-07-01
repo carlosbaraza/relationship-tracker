@@ -5,6 +5,7 @@ import { Plus, X, Bell, BellRing, BellOff } from "lucide-react";
 import { ContactList } from "@/components/ContactList";
 import { ReminderList } from "@/components/ReminderList";
 import { useAuth } from "@/components/AuthProvider";
+import InstallPrompt from "@/components/InstallPrompt";
 import type { Reminder } from "@/lib/types";
 
 export default function HomePage() {
@@ -131,6 +132,9 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      {/* Install App Prompt */}
+      <InstallPrompt />
+
       {/* Notification Permission Banner */}
       {showNotificationBanner && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
