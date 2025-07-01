@@ -7,6 +7,8 @@ export default function InstallPrompt() {
   const [canInstall, setCanInstall] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed with multiple detection methods
@@ -94,11 +96,13 @@ export default function InstallPrompt() {
     // One-time delayed check for iOS Safari support
     const delayedCheck = setTimeout(() => {
       // For iOS Safari, we can't detect beforeinstallprompt, so check for iOS and show install instructions
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isInStandaloneMode = (window.navigator as any).standalone;
 
+      setIsIOS(isIOSDevice);
+
       if (
-        isIOS &&
+        isIOSDevice &&
         !isInStandaloneMode &&
         !installed &&
         !localStorage.getItem("pwa-install-dismissed")
@@ -145,6 +149,59 @@ export default function InstallPrompt() {
   // Don't show if installed, not installable, or not visible
   if (isInstalled || !canInstall || !isVisible) {
     return null;
+  }
+
+  if (isIOS) {
+    return (
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center space-x-3">
+            <Smartphone className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <p className="text-blue-800">
+              <strong>Install Elector</strong> for quick access and notifications
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowIOSInstructions(!showIOSInstructions)}
+              className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-medium"
+            >
+              <Download className="w-3 h-3" />
+              <span>{showIOSInstructions ? "Hide" : "Show"} Instructions</span>
+            </button>
+
+            <button
+              onClick={handleDismiss}
+              className="text-xs text-blue-600 hover:text-blue-800 transition-colors px-2 py-1"
+            >
+              Don't show again
+            </button>
+          </div>
+        </div>
+
+        {showIOSInstructions && (
+          <div className="mt-3 pt-3 border-t border-blue-200">
+            <div className="text-blue-700 space-y-2 text-xs">
+              <p className="font-medium text-blue-800 mb-2">How to install on iPhone:</p>
+              <p>
+                1. Tap the <strong>Share</strong> button <span className="text-lg">⎘</span> at the
+                bottom of Safari
+              </p>
+              <p>
+                2. Scroll down and tap <strong>"Add to Home Screen"</strong>
+              </p>
+              <p>
+                3. Tap <strong>"Add"</strong> in the top right corner
+              </p>
+              <p className="text-blue-600 italic mt-2">
+                The app will appear on your home screen for quick access!
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

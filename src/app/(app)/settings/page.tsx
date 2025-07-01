@@ -9,6 +9,8 @@ export default function SettingsPage() {
   const [canInstall, setCanInstall] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed
@@ -44,9 +46,15 @@ export default function SettingsPage() {
       return localStorage.getItem("pwa-install-dismissed") === "true";
     };
 
+    // Check if iOS device
+    const checkIfIOS = () => {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent);
+    };
+
     setIsInstalled(checkIfInstalled());
     setCanInstall(checkInstallable());
     setInstallDismissed(checkDismissed());
+    setIsIOS(checkIfIOS());
   }, []);
 
   const handleInstall = async () => {
@@ -119,13 +127,6 @@ export default function SettingsPage() {
 
           {session?.user ? (
             <div className="space-y-3">
-              <div className="flex items-center space-x-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <Shield className="w-4 h-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm text-green-800 dark:text-green-200">
-                  You are signed in
-                </span>
-              </div>
-
               {session.user.email && (
                 <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <Mail className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -190,19 +191,57 @@ export default function SettingsPage() {
 
                     <div className="flex flex-wrap gap-2">
                       {canInstall ? (
-                        <button
-                          onClick={handleInstall}
-                          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span>Install App</span>
-                        </button>
+                        <>
+                          {isIOS ? (
+                            <button
+                              onClick={() => setShowIOSInstructions(!showIOSInstructions)}
+                              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium"
+                            >
+                              <Download className="w-4 h-4" />
+                              <span>{showIOSInstructions ? "Hide" : "Show"} Instructions</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={handleInstall}
+                              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium"
+                            >
+                              <Download className="w-4 h-4" />
+                              <span>Install App</span>
+                            </button>
+                          )}
+                        </>
                       ) : (
                         <div className="text-xs text-gray-600 dark:text-gray-400 p-2">
                           Install option not available in this browser
                         </div>
                       )}
                     </div>
+
+                    {isIOS && showIOSInstructions && (
+                      <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-700">
+                        <div className="text-blue-700 dark:text-blue-300 space-y-2 text-sm">
+                          <p className="font-medium text-blue-800 dark:text-blue-200 mb-3">
+                            How to install on iPhone:
+                          </p>
+                          <div className="space-y-2">
+                            <p>
+                              1. Tap the <strong>Share</strong> button{" "}
+                              <span className="text-lg">⎘</span> at the bottom of Safari
+                            </p>
+                            <p>
+                              2. Scroll down and tap <strong>"Add to Home Screen"</strong>
+                            </p>
+                            <p>
+                              3. Tap <strong>"Add"</strong> in the top right corner
+                            </p>
+                          </div>
+                          <p className="text-blue-600 dark:text-blue-400 italic mt-3 text-xs">
+                            The app will appear on your home screen for quick access and
+                            notifications!
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -232,7 +271,6 @@ export default function SettingsPage() {
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Quick access from home screen</li>
               <li>Push notifications for reminders</li>
-              <li>Offline functionality</li>
               <li>Native app experience</li>
             </ul>
           </div>
