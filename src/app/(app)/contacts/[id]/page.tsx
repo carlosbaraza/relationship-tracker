@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Edit, Trash2, Plus, Calendar, List, Bell } from "lucide-react";
 import { format } from "date-fns";
@@ -8,6 +8,7 @@ import { InteractionCalendar } from "@/components/InteractionCalendar";
 import { ReminderForm } from "@/components/ReminderForm";
 import { ReminderList } from "@/components/ReminderList";
 import { useAuth } from "@/components/AuthProvider";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import type { Contact, Interaction, Reminder, CreateReminderData } from "@/lib/types";
 
 export default function ContactDetailPage() {
@@ -30,7 +31,7 @@ export default function ContactDetailPage() {
   const [editingNote, setEditingNote] = useState("");
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
 
-  const loadContactData = async () => {
+  const loadContactData = useCallback(async () => {
     try {
       const foundContact = await storageManager.getContact(contactId);
 
@@ -51,14 +52,20 @@ export default function ContactDetailPage() {
       console.error("Error loading contact data:", error);
       router.push("/");
     }
-  };
+  }, [contactId, router, storageManager]);
+
+  // Set up auto-refresh for contact data
+  const { manualRefresh } = useAutoRefresh(loadContactData, {
+    enabled: !authLoading && !loading, // Only enable when not loading
+    interval: 60000, // 1 minute
+  });
 
   useEffect(() => {
     // Only load contact data after auth has finished loading
     if (!authLoading) {
       loadContactData();
     }
-  }, [contactId, router, storageManager, authLoading]);
+  }, [authLoading, loadContactData]);
 
   const handleDeleteContact = async () => {
     if (!contact) return;

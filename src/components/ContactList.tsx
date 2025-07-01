@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ContactRow } from "./ContactRow";
 import type { ContactWithLastInteraction } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 
 export function ContactList() {
   const { storageManager, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -11,18 +12,24 @@ export function ContactList() {
   const [loading, setLoading] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
 
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     const data = await storageManager.getContactsWithLastInteraction();
     setContacts(data);
     setLoading(false);
-  };
+  }, [storageManager]);
+
+  // Set up auto-refresh for contacts
+  const { manualRefresh } = useAutoRefresh(loadContacts, {
+    enabled: !authLoading, // Only enable when not loading
+    interval: 60000, // 1 minute
+  });
 
   useEffect(() => {
     // Only load contacts after auth has finished loading
     if (!authLoading) {
       loadContacts();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, loadContacts]);
 
   const handleInteractionAdded = () => {
     loadContacts();

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, X, Bell, BellRing, BellOff, RefreshCw } from "lucide-react";
 import { ContactList } from "@/components/ContactList";
 import { ReminderList } from "@/components/ReminderList";
 import { useAuth } from "@/components/AuthProvider";
 import InstallPrompt from "@/components/InstallPrompt";
+import { useAutoRefresh } from "@/lib/use-auto-refresh";
 import type { Reminder } from "@/lib/types";
 
 export default function HomePage() {
@@ -48,6 +49,39 @@ export default function HomePage() {
       setUpcomingReminders(upcoming);
     }
   };
+
+  // Combined refresh function for auto-refresh
+  const refreshAllData = useCallback(async () => {
+    if (authLoading) return;
+
+    // Trigger refresh of contact list
+    setRefreshKey((prev) => prev + 1);
+
+    // Also reload reminders and available groups
+    await loadReminders();
+    getAvailableGroups().then(setAvailableGroups);
+  }, [authLoading, storageManager]);
+
+  // Set up auto-refresh (every minute)
+  const { manualRefresh, isEnabled } = useAutoRefresh(refreshAllData, {
+    enabled: !authLoading, // Only enable when not loading
+    interval: 60000, // 1 minute
+  });
+
+  // Track last refresh time for status indicator
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+
+  // Update last refresh time when data is refreshed
+  useEffect(() => {
+    const updateLastRefresh = () => {
+      setLastRefreshTime(new Date());
+    };
+
+    // Update on initial load
+    if (!authLoading) {
+      updateLastRefresh();
+    }
+  }, [refreshKey, authLoading]);
 
   // Load available groups on component mount
   React.useEffect(() => {
@@ -128,14 +162,8 @@ export default function HomePage() {
   };
 
   const handleRefresh = async () => {
-    // Trigger refresh of contact list
-    setRefreshKey((prev) => prev + 1);
-
-    // Also reload reminders and available groups
-    if (!authLoading) {
-      await loadReminders();
-      getAvailableGroups().then(setAvailableGroups);
-    }
+    // Use the manual refresh from auto-refresh hook
+    await manualRefresh();
   };
 
   const totalDueReminders = dueReminders.length;
@@ -243,13 +271,21 @@ export default function HomePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Contacts</h2>
-          <button
-            onClick={handleRefresh}
-            className="flex items-center space-x-1 px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-            title="Refresh contacts"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleRefresh}
+              className="flex items-center space-x-1 px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+              title="Refresh contacts manually"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            {/* Auto-refresh status indicator */}
+            {isEnabled && (
+              <div className="flex items-center space-x-1 text-xs text-gray-400 dark:text-gray-500">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              </div>
+            )}
+          </div>
         </div>
 
         {!showAddForm ? (
