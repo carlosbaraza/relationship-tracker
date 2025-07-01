@@ -229,11 +229,11 @@ export default function ContactDetailPage() {
       </div>
 
       {/* View Mode and Add Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={() => setViewMode("calendar")}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+            className={`flex text-xs sm:text-base items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
               viewMode === "calendar"
                 ? "bg-black dark:bg-white text-white dark:text-black"
                 : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
@@ -244,7 +244,7 @@ export default function ContactDetailPage() {
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+            className={`flex text-xs sm:text-base items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
               viewMode === "list"
                 ? "bg-black dark:bg-white text-white dark:text-black"
                 : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
@@ -255,7 +255,7 @@ export default function ContactDetailPage() {
           </button>
           <button
             onClick={() => setViewMode("reminders")}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+            className={`flex text-xs sm:text-base items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
               viewMode === "reminders"
                 ? "bg-black dark:bg-white text-white dark:text-black"
                 : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"

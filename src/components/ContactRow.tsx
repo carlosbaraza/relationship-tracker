@@ -40,7 +40,7 @@ export function ContactRow({ contact, onInteractionAdded, onContactDeleted }: Co
   const upcomingCount = contact.upcomingReminders?.length || 0;
 
   return (
-    <div className="flex items-center justify-between py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors group">
+    <div className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors group">
       <Link href={`/contacts/${contact.id}`} className="flex-1 flex items-center space-x-3 min-w-0">
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2">
@@ -81,18 +81,10 @@ export function ContactRow({ contact, onInteractionAdded, onContactDeleted }: Co
       <div className="flex items-center space-x-1">
         <button
           onClick={handleQuickInteraction}
-          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
+          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors opacity-100 focus:opacity-100"
           aria-label={`Add interaction for ${contact.name}`}
         >
           <Plus className="w-4 h-4" />
-        </button>
-
-        <button
-          onClick={handleDeleteContact}
-          className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
-          aria-label={`Delete ${contact.name}`}
-        >
-          <Trash2 className="w-4 h-4" />
         </button>
       </div>
     </div>
