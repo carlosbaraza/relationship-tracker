@@ -177,7 +177,7 @@ export default function HomePage() {
         <div className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg">
           <div className="p-4 border-b border-gray-200 dark:border-gray-800">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center flex-wrap gap-2">
                 <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Reminders</h2>
                 {totalDueReminders > 0 && (
