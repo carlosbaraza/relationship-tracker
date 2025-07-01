@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white dark:bg-black">
       <header className="sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-4 pwa:pt-12 flex items-center justify-between">
           <Link href="/" className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Elector
           </Link>

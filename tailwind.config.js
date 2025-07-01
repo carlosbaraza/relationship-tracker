@@ -7,7 +7,11 @@ module.exports = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        pwa: { raw: "(display-mode: standalone)" },
+      },
+    },
   },
   plugins: [],
 };

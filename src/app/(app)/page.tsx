@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, X, Bell, BellRing, BellOff } from "lucide-react";
+import { Plus, X, Bell, BellRing, BellOff, RefreshCw } from "lucide-react";
 import { ContactList } from "@/components/ContactList";
 import { ReminderList } from "@/components/ReminderList";
 import { useAuth } from "@/components/AuthProvider";
@@ -127,6 +127,17 @@ export default function HomePage() {
     setShowNotificationBanner(false);
   };
 
+  const handleRefresh = async () => {
+    // Trigger refresh of contact list
+    setRefreshKey((prev) => prev + 1);
+
+    // Also reload reminders and available groups
+    if (!authLoading) {
+      await loadReminders();
+      getAvailableGroups().then(setAvailableGroups);
+    }
+  };
+
   const totalDueReminders = dueReminders.length;
   const totalUpcomingReminders = upcomingReminders.length;
 
@@ -230,12 +241,21 @@ export default function HomePage() {
 
       {/* Add Contact Section */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Contacts</h2>
+        <div className="flex items-center space-x-3">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Contacts</h2>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center space-x-1 px-2 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+            title="Refresh contacts"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
 
         {!showAddForm ? (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+            className="flex items-center space-x-2 px-3 py-1 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Add Contact</span>
