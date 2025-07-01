@@ -178,11 +178,17 @@ self.addEventListener("pushsubscriptionchange", (event) => {
   console.log("Service Worker: Push subscription changed", event);
 
   event.waitUntil(
-    // Re-subscribe to push notifications
-    self.registration.pushManager
-      .subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: null, // You'll need to add your VAPID key here
+    // Get VAPID public key and re-subscribe
+    fetch("/api/push/subscribe")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.publicKey) {
+          return self.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(data.publicKey),
+          });
+        }
+        throw new Error("No VAPID public key available");
       })
       .then((subscription) => {
         // Send new subscription to server
@@ -191,8 +197,28 @@ self.addEventListener("pushsubscriptionchange", (event) => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(subscription),
+          body: JSON.stringify({
+            subscription: subscription,
+            userAgent: navigator.userAgent,
+          }),
         });
+      })
+      .catch((error) => {
+        console.error("Service Worker: Failed to resubscribe:", error);
       })
   );
 });
+
+// Helper function to convert VAPID key
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = self.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}

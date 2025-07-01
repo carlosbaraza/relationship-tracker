@@ -11,14 +11,15 @@ datasource db {
 }
 
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String    @unique
-    emailVerified DateTime?
-    image         String?
-    createdAt     DateTime  @default(now())
-    updatedAt     DateTime  @updatedAt
-    contacts      Contact[]
+    id                String             @id @default(cuid())
+    name              String?
+    email             String             @unique
+    emailVerified     DateTime?
+    image             String?
+    createdAt         DateTime           @default(now())
+    updatedAt         DateTime           @updatedAt
+    contacts          Contact[]
+    pushSubscriptions PushSubscription[]
 
     accounts Account[]
     sessions Session[]
@@ -120,4 +121,21 @@ model VerificationToken {
 
     @@unique([identifier, token])
     @@map("verificationtokens")
+}
+
+model PushSubscription {
+    id               String    @id @default(cuid())
+    userId           String
+    user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    endpoint         String
+    p256dhKey        String
+    authKey          String
+    userAgent        String?
+    isActive         Boolean   @default(true)
+    lastNotification DateTime?
+    createdAt        DateTime  @default(now())
+    updatedAt        DateTime  @updatedAt
+
+    @@unique([userId, endpoint])
+    @@map("push_subscriptions")
 }

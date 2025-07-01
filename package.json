@@ -12,11 +12,17 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:reset": "prisma migrate reset",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "generate-vapid": "node scripts/generate-vapid-keys.js",
+    "check-reminders": "curl -X POST http://localhost:3000/api/notifications/check-reminders",
+    "test-notifications": "curl -X POST http://localhost:3000/api/notifications/test",
+    "scheduler-status": "curl http://localhost:3000/api/notifications/status",
+    "trigger-check": "curl -X POST http://localhost:3000/api/notifications/status"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
     "@prisma/client": "^6.10.1",
+    "@types/web-push": "^3.6.4",
     "cuid": "^3.0.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.462.0",
@@ -24,7 +30,8 @@
     "next-auth": "5.0.0-beta.29",
     "nodemailer": "^6.10.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

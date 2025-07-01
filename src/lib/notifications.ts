@@ -30,11 +30,125 @@ class NotificationService {
 
     try {
       this.permission = await Notification.requestPermission();
+
+      // If permission granted, register for push notifications
+      if (this.permission === "granted") {
+        await this.subscribeToPush();
+      }
+
       return this.permission;
     } catch (error) {
       console.error("Error requesting notification permission:", error);
       return "denied";
     }
+  }
+
+  async subscribeToPush(): Promise<boolean> {
+    if (
+      typeof window === "undefined" ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window)
+    ) {
+      console.log("Push messaging is not supported");
+      return false;
+    }
+
+    try {
+      // Wait for service worker to be ready
+      const registration = await navigator.serviceWorker.ready;
+
+      // Get existing subscription
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        // Get VAPID public key from server
+        const response = await fetch("/api/push/subscribe");
+        const { publicKey } = await response.json();
+
+        if (!publicKey) {
+          console.error("No VAPID public key available");
+          return false;
+        }
+
+        // Create new subscription
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: this.urlBase64ToUint8Array(publicKey),
+        });
+      }
+
+      // Send subscription to server
+      const subscribeResponse = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          subscription: subscription,
+          userAgent: navigator.userAgent,
+        }),
+      });
+
+      if (subscribeResponse.ok) {
+        console.log("Successfully subscribed to push notifications");
+        return true;
+      } else {
+        console.error("Failed to subscribe to push notifications");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error subscribing to push notifications:", error);
+      return false;
+    }
+  }
+
+  async unsubscribeFromPush(): Promise<boolean> {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return false;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        // Unsubscribe from browser
+        await subscription.unsubscribe();
+
+        // Notify server
+        await fetch("/api/push/subscribe", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+          }),
+        });
+
+        console.log("Successfully unsubscribed from push notifications");
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error unsubscribing from push notifications:", error);
+      return false;
+    }
+  }
+
+  // Helper function to convert VAPID key
+  private urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   }
 
   canShowNotifications(): boolean {

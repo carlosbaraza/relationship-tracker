@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
 
+  // Instrumentation is enabled by default in Next.js 15
+
   // PWA configuration
   async headers() {
     return [
